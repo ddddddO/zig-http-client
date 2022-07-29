@@ -30,7 +30,7 @@ pub const Request = struct {
     allocator: Allocator,
     headers: ?[]const u8, // TODO: 複数保持
 
-    fn get(self: Request, target: []const u8) !Response {
+    pub fn get(self: Request, target: []const u8) !Response {
         const tcp_conn = try std.net.tcpConnectToHost(self.allocator, target, 80);
         defer tcp_conn.close();
 
@@ -71,7 +71,7 @@ pub const Request = struct {
         return Response.init(buf);
     }
 
-    fn setHeader(self: *Request, header: []const u8) *Request {
+    pub fn setHeader(self: *Request, header: []const u8) *Request {
         self.headers = header;
         return self;
     }
