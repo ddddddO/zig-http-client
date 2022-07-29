@@ -79,20 +79,20 @@ pub const Request = struct {
 
 pub const Response = struct {
     buf: std.ArrayList(u8),
-    _status_line: []u8,
+    status_line: []u8,
 
     pub fn init(buf: std.ArrayList(u8)) Response {
-        var first_line: []u8 = undefined;
+        var status_line: []u8 = undefined;
         for (buf.items) |item, i| {
             if ((item == '\r') and (buf.items[i + 1] == '\n')) {
-                first_line = buf.items[0..i];
+                status_line = buf.items[0..i];
                 break;
             }
         }
 
         return Response{
             .buf = buf,
-            ._status_line = first_line,
+            .status_line = status_line,
         };
     }
 
@@ -104,16 +104,16 @@ pub const Response = struct {
         return self.buf.items;
     }
 
-    pub fn status_line(self: Response) []u8 {
-        return self._status_line;
+    pub fn statusLine(self: Response) []u8 {
+        return self.status_line;
     }
 
-    pub fn status_code(self: Response) []u8 {
-        return self.status_line()[9..12];
+    pub fn statusCode(self: Response) []u8 {
+        return self.statusLine()[9..12];
     }
 
     pub fn status(self: Response) []u8 {
-        return self.status_line()[13..self._status_line.len];
+        return self.statusLine()[13..self.status_line.len];
     }
 };
 
@@ -129,7 +129,7 @@ test "usage" {
         .get(host);
     defer res.deinit();
 
-    try testing.expect(std.mem.eql(u8, "HTTP/1.1 200 OK", res.status_line()));
-    try testing.expect(std.mem.eql(u8, "200", res.status_code()));
+    try testing.expect(std.mem.eql(u8, "HTTP/1.1 200 OK", res.statusLine()));
+    try testing.expect(std.mem.eql(u8, "200", res.statusCode()));
     try testing.expect(std.mem.eql(u8, "OK", res.status()));
 }

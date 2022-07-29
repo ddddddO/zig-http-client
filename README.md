@@ -15,8 +15,8 @@ pub fn main() anyerror!void {
     defer res.deinit();
 
     const writer = std.io.getStdOut().writer();
-    try writer.print("Status Line: {s}\n", .{res.status_line()});
-    try writer.print("Status Code: {s}\n", .{res.status_code()});
+    try writer.print("Status Line: {s}\n", .{res.statusLine()});
+    try writer.print("Status Code: {s}\n", .{res.statusCode()});
     try writer.print("Status: {s}\n", .{res.status()});
 
     // Output:
