@@ -11,7 +11,6 @@ pub fn main() anyerror!void {
     const host = "www.google.com";
 
     const client = HttpClient.init(allocator);
-    defer client.deinit();
     const res = try client.req()
         .setHeader("Accept: text/html")
         .get(host);

@@ -14,10 +14,6 @@ pub const HttpClient = struct {
         };
     }
 
-    pub fn deinit(self: HttpClient) void {
-        _ = self;
-    }
-
     pub fn req(self: HttpClient) Request {
         return Request{
             .allocator = self.allocator,
@@ -123,7 +119,6 @@ test "usage" {
     // const host = "www.yahoo.co.jp";
 
     const client = HttpClient.init(allocator);
-    defer client.deinit();
     const res = try client.req()
         .setHeader("Accept: text/html")
         .get(host);
