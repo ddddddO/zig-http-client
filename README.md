@@ -4,7 +4,6 @@ HTTP client lib for Zig. Inspired by go-resty!
 ## Usage
 ```zig
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const HttpClient = @import("http-client").HttpClient;
 
 pub fn main() anyerror!void {
