@@ -76,19 +76,40 @@ pub const Request = struct {
 pub const Response = struct {
     buf: std.ArrayList(u8),
     status_line: []u8,
+    raw_headers: []u8,
+    raw_body: []u8,
 
     pub fn init(buf: std.ArrayList(u8)) Response {
-        var status_line: []u8 = undefined;
-        for (buf.items) |item, i| {
-            if ((item == '\r') and (buf.items[i + 1] == '\n')) {
+        var serched_point: usize = undefined;
+
+        // status line
+        var status_line: []u8 = "";
+        for (buf.items) |_, i| {
+            if (std.mem.eql(u8, buf.items[i .. i + 2], "\r\n")) {
                 status_line = buf.items[0..i];
+                serched_point = i + 1;
                 break;
             }
         }
 
+        // response headers
+        var raw_headers: []u8 = "";
+        for (buf.items) |_, i| {
+            if (std.mem.eql(u8, buf.items[i .. i + 4], "\r\n\r\n")) {
+                raw_headers = buf.items[serched_point + 1 .. i];
+                serched_point = i + 4;
+                break;
+            }
+        }
+
+        // response body
+        var raw_body: []u8 = buf.items[serched_point..];
+
         return Response{
             .buf = buf,
             .status_line = status_line,
+            .raw_headers = raw_headers,
+            .raw_body = raw_body,
         };
     }
 
@@ -98,6 +119,14 @@ pub const Response = struct {
 
     pub fn raw(self: Response) []u8 {
         return self.buf.items;
+    }
+
+    pub fn rawHeaders(self: Response) []u8 {
+        return self.raw_headers;
+    }
+
+    pub fn rawBody(self: Response) []u8 {
+        return self.raw_body;
     }
 
     pub fn statusLine(self: Response) []u8 {
@@ -115,6 +144,8 @@ pub const Response = struct {
 
 test "usage" {
     const allocator = testing.allocator;
+
+    // TODO: ローカルのサーバーを用意する
     const host = "www.google.com";
     // const host = "www.yahoo.co.jp";
 
@@ -127,4 +158,8 @@ test "usage" {
     try testing.expect(std.mem.eql(u8, "HTTP/1.1 200 OK", res.statusLine()));
     try testing.expect(std.mem.eql(u8, "200", res.statusCode()));
     try testing.expect(std.mem.eql(u8, "OK", res.status()));
+
+    try testing.expect(res.raw().len > 0);
+    try testing.expect(res.rawHeaders().len > 0);
+    try testing.expect(res.rawBody().len > 0);
 }
