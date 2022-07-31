@@ -18,19 +18,8 @@ pub const Request = struct {
         const tcp_conn = try std.net.tcpConnectToHost(self.allocator, host.domain, host.port);
         defer tcp_conn.close();
 
-        const request_line = try std.fmt.allocPrint(self.allocator, "GET {s} HTTP/1.1\r\n", .{host.path});
-        defer self.allocator.free(request_line);
-
-        _ = try tcp_conn.write(request_line);
-        const host_header = try std.fmt.allocPrint(self.allocator, "Host: {s}\r\n", .{host.domain});
-        defer self.allocator.free(host_header);
-        _ = try tcp_conn.write(host_header);
-
-        if (self.headers.items.len != 0) {
-            _ = try tcp_conn.write(self.headers.items);
-            self.allocator.free(self.headers.items);
-        }
-        _ = try tcp_conn.write("\r\n");
+        const method = "GET";
+        try self.send(tcp_conn, host, method);
 
         var buf = try self.receive(tcp_conn);
 
@@ -44,7 +33,16 @@ pub const Request = struct {
         const tcp_conn = try std.net.tcpConnectToHost(self.allocator, host.domain, host.port);
         defer tcp_conn.close();
 
-        const request_line = try std.fmt.allocPrint(self.allocator, "POST {s} HTTP/1.1\r\n", .{host.path});
+        var method = "POST";
+        try self.send(tcp_conn, host, method);
+
+        var buf = try self.receive(tcp_conn);
+
+        return Response.init(buf);
+    }
+
+    pub fn send(self: Request, tcp_conn: anytype, host: Host, method: []const u8) !void {
+        const request_line = try std.fmt.allocPrint(self.allocator, "{s} {s} HTTP/1.1\r\n", .{ method, host.path });
         defer self.allocator.free(request_line);
 
         _ = try tcp_conn.write(request_line);
@@ -62,10 +60,6 @@ pub const Request = struct {
             _ = try tcp_conn.write(self.body.?);
             _ = try tcp_conn.write("\r\n");
         }
-
-        var buf = try self.receive(tcp_conn);
-
-        return Response.init(buf);
     }
 
     pub fn receive(self: Request, tcp_conn: anytype) !std.ArrayList(u8) {
