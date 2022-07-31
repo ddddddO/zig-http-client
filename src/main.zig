@@ -71,15 +71,23 @@ test "local server (memo api)" {
     }
 
     {
+        const user_name = std.os.getenv("NAME");
+        const password = std.os.getenv("PASSWORD");
+        var body = try std.fmt.allocPrint(allocator, "name={s}&passwd={s}", .{ user_name, password });
+        defer allocator.free(body);
+        var content_length_header = try std.fmt.allocPrint(allocator, "Content-Length: {d}", .{body.len});
+        defer allocator.free(content_length_header);
+
         const host = "localhost:8082/auth";
         const res = try client.req()
             .setHeader("Content-Type: application/x-www-form-urlencoded")
-            .setHeader("Content-Length: XXX") // TODO: ライブラリ側で、bodyから長さを算出してセットする方が良さそう。
-            .setBody("name=xxxxx&passwd=xxxxxxxxxxxxx")
+            .setHeader(content_length_header) // TODO: ライブラリ側で、bodyから長さを算出してセットする方が良さそう。
+            .setBody(body)
             .post(host);
         defer res.deinit();
 
         // std.debug.print("\nRESPONSE\n{s}\n", .{res.rawBody()});
+        std.debug.print("\nHEADERs\n{s}\n", .{res.rawHeaders()});
 
         try testing.expect(std.mem.eql(u8, "HTTP/1.1 200 OK", res.statusLine()));
         try testing.expect(std.mem.eql(u8, "200", res.statusCode()));
