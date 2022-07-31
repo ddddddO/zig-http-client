@@ -23,7 +23,7 @@ pub const Request = struct {
         return response;
     }
 
-    pub fn request(self: Request, method: []const u8, target: []const u8) !Response {
+    fn request(self: Request, method: []const u8, target: []const u8) !Response {
         const host = try Host.init(self.allocator, target);
         defer host.deinit();
 
@@ -37,7 +37,7 @@ pub const Request = struct {
         return Response.init(buf);
     }
 
-    pub fn send(self: Request, tcp_conn: anytype, host: Host, method: []const u8) !void {
+    fn send(self: Request, tcp_conn: anytype, host: Host, method: []const u8) !void {
         const request_line = try std.fmt.allocPrint(self.allocator, "{s} {s} HTTP/1.1\r\n", .{ method, host.path });
         defer self.allocator.free(request_line);
 
@@ -58,7 +58,7 @@ pub const Request = struct {
         }
     }
 
-    pub fn receive(self: Request, tcp_conn: anytype) !std.ArrayList(u8) {
+    fn receive(self: Request, tcp_conn: anytype) !std.ArrayList(u8) {
         // TODO: この辺り要注意
         // もっといい方法あるはず
         var buf = std.ArrayList(u8).init(self.allocator);
@@ -91,11 +91,6 @@ pub const Request = struct {
         return buf;
     }
 
-    pub fn setBody(self: *Request, body: []const u8) *Request {
-        self.body = body;
-        return self;
-    }
-
     // NOTE: error返した方がいいとは思う
     pub fn setHeader(self: *Request, header: []const u8) *Request {
         self.headers.appendSlice(header) catch |err| {
@@ -106,6 +101,11 @@ pub const Request = struct {
             log.err("setHeader error: {s}", .{err});
             return self;
         };
+        return self;
+    }
+
+    pub fn setBody(self: *Request, body: []const u8) *Request {
+        self.body = body;
         return self;
     }
 };
