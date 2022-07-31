@@ -37,7 +37,7 @@ pub const Request = struct {
         defer tcp_conn.close();
 
         _ = try tcp_conn.write("GET / HTTP/1.1\r\n");
-        const host_header = try std.fmt.allocPrint(self.allocator, "Host: {s}\r\n", .{target});
+        const host_header = try std.fmt.allocPrint(self.allocator, "Host: {s}\r\n", .{host.domain});
         defer self.allocator.free(host_header);
         _ = try tcp_conn.write(host_header);
 
