@@ -27,7 +27,13 @@ pub const Request = struct {
     headers: ?[]const u8, // TODO: 複数保持
 
     pub fn get(self: Request, target: []const u8) !Response {
-        const tcp_conn = try std.net.tcpConnectToHost(self.allocator, target, 80);
+        const host = try Host.init(self.allocator, target);
+        defer host.deinit();
+
+        const dest = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{ host.domain, host.path });
+        defer self.allocator.free(dest);
+
+        const tcp_conn = try std.net.tcpConnectToHost(self.allocator, dest, host.port);
         defer tcp_conn.close();
 
         _ = try tcp_conn.write("GET / HTTP/1.1\r\n");
@@ -41,6 +47,7 @@ pub const Request = struct {
         }
         _ = try tcp_conn.write("\r\n");
 
+        // TODO: この辺り要注意
         var buf = std.ArrayList(u8).init(self.allocator);
         while (true) {
             var response_buffer: [2048]u8 = undefined;
@@ -59,6 +66,11 @@ pub const Request = struct {
             }
             const end_response_2 = std.mem.eql(u8, "\r\n ", response_buffer[len - 3 .. len]);
             if (end_response_2) {
+                // log.debug("Response end...", .{});
+                break;
+            }
+            const end_response_3 = std.mem.eql(u8, "}\n", response_buffer[len - 2 .. len]);
+            if (end_response_3) {
                 // log.debug("Response end...", .{});
                 break;
             }
@@ -142,6 +154,91 @@ pub const Response = struct {
     }
 };
 
+const Host = struct {
+    allocator: Allocator,
+    scheme: []u8,
+    domain: []u8,
+    path: []u8,
+    port: u16,
+
+    fn deinit(self: Host) void {
+        self.allocator.free(self.domain);
+        self.allocator.free(self.path);
+    }
+
+    // NOTE: 一旦、以下のパターンだけ考える
+    // domain
+    // domain/path
+    // domain:port
+    // domain:port/path
+    fn init(allocator: Allocator, target: []const u8) !Host {
+        var scheme: []u8 = "";
+        var domain: []u8 = "";
+        var path: []u8 = "";
+        var port: u16 = undefined;
+
+        // domain
+        var tmp_domain = std.ArrayList(u8).init(allocator);
+        try tmp_domain.appendSlice(target);
+        domain = tmp_domain.items;
+
+        // domain:port
+        // domain:port/path
+        var tmp_port = std.ArrayList(u8).init(allocator);
+        defer allocator.free(tmp_port.items);
+
+        var tmp_path = std.ArrayList(u8).init(allocator);
+        var _port: []u8 = "";
+        for (target) |_, i| {
+            if (target[i] == ':') {
+                tmp_domain.clearAndFree();
+                try tmp_domain.appendSlice(target[0..i]);
+                domain = tmp_domain.items;
+
+                try tmp_port.appendSlice(target[i + 1 ..]);
+                _port = tmp_port.items;
+                for (tmp_port.items) |_, j| {
+                    if (tmp_port.items[j] == '/') {
+                        _port = tmp_port.items[0..j];
+
+                        try tmp_path.appendSlice(target[i + 1 + j ..]);
+                        path = tmp_path.items;
+                        break;
+                    }
+                }
+            }
+        }
+        if (_port.len == 0) {
+            try tmp_port.appendSlice("80");
+            _port = tmp_port.items;
+        }
+        port = try std.fmt.parseUnsigned(u16, _port, 10);
+
+        // domain/path
+        if (path.len == 0) {
+            for (target) |_, i| {
+                if (target[i] == '/') {
+                    tmp_domain.clearAndFree();
+                    try tmp_domain.appendSlice(target[0..i]);
+                    domain = tmp_domain.items;
+
+                    try tmp_path.appendSlice(target[i..]);
+                    path = tmp_path.items;
+                    break;
+                }
+            }
+        }
+
+        return Host{
+            .allocator = allocator,
+            .scheme = scheme,
+            .domain = domain,
+            .path = path,
+            .port = port,
+        };
+    }
+};
+
 test "usage" {
     const allocator = testing.allocator;
 
@@ -162,4 +259,69 @@ test "usage" {
     try testing.expect(res.raw().len > 0);
     try testing.expect(res.rawHeaders().len > 0);
     try testing.expect(res.rawBody().len > 0);
+}
+
+// test "local server (memo api)" {
+//     const allocator = testing.allocator;
+
+//     const host = "localhost:8082";
+
+//     const client = HttpClient.init(allocator);
+//     const res = try client.req()
+//         .get(host);
+//     defer res.deinit();
+
+//     try testing.expect(std.mem.eql(u8, "HTTP/1.1 401 Unauthorized", res.statusLine()));
+//     try testing.expect(std.mem.eql(u8, "401", res.statusCode()));
+//     try testing.expect(std.mem.eql(u8, "Unauthorized", res.status()));
+
+//     try testing.expect(res.raw().len > 0);
+//     try testing.expect(res.rawHeaders().len > 0);
+//     try testing.expect(res.rawBody().len > 0);
+
+//     std.debug.print("\n", .{});
+//     std.debug.print("res.rawHeaders():\n{s}\n", .{res.rawHeaders()});
+//     std.debug.print("res.rawBody():\n{s}\n", .{res.rawBody()});
+// }
+
+test "Host test" {
+    const allocator = testing.allocator;
+
+    {
+        const in = "example.com";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(80 == host.port);
+    }
+
+    {
+        const in = "example.com:8082";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(8082 == host.port);
+    }
+
+    {
+        const in = "example.com:8082/accounts";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(8082 == host.port);
+        try testing.expect(std.mem.eql(u8, "/accounts", host.path));
+    }
+
+    {
+        const in = "example.com/accounts";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(80 == host.port);
+        try testing.expect(std.mem.eql(u8, "/accounts", host.path));
+    }
 }
