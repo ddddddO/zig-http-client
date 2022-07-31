@@ -12,28 +12,24 @@ pub const Request = struct {
     body: ?[]const u8,
 
     pub fn get(self: Request, target: []const u8) !Response {
-        const host = try Host.init(self.allocator, target);
-        defer host.deinit();
-
-        const tcp_conn = try std.net.tcpConnectToHost(self.allocator, host.domain, host.port);
-        defer tcp_conn.close();
-
         const method = "GET";
-        try self.send(tcp_conn, host, method);
-
-        var buf = try self.receive(tcp_conn);
-
-        return Response.init(buf);
+        const response = self.request(method, target);
+        return response;
     }
 
     pub fn post(self: Request, target: []const u8) !Response {
+        const method = "POST";
+        const response = try self.request(method, target);
+        return response;
+    }
+
+    pub fn request(self: Request, method: []const u8, target: []const u8) !Response {
         const host = try Host.init(self.allocator, target);
         defer host.deinit();
 
         const tcp_conn = try std.net.tcpConnectToHost(self.allocator, host.domain, host.port);
         defer tcp_conn.close();
 
-        var method = "POST";
         try self.send(tcp_conn, host, method);
 
         var buf = try self.receive(tcp_conn);
