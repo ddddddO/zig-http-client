@@ -134,4 +134,14 @@ test "Host test" {
         try testing.expect(80 == host.port);
         try testing.expect(std.mem.eql(u8, "/accounts", host.path));
     }
+
+    {
+        const in = "example.com:8082/accounts?userId=1";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(8082 == host.port);
+        try testing.expect(std.mem.eql(u8, "/accounts?userId=1", host.path));
+    }
 }

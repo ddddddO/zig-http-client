@@ -52,6 +52,40 @@ pub const Response = struct {
         return self.raw_headers;
     }
 
+    pub fn cookie(self: Response) []u8 {
+        const cookie_header_string = "Set-Cookie: ";
+
+        var start_cookie: usize = 0;
+        var exist_cookie = false;
+        const raw_headers = self.rawHeaders();
+        for (raw_headers) |_, i| {
+            if ((i + cookie_header_string.len) == raw_headers.len) {
+                break;
+            }
+
+            if (std.mem.eql(u8, cookie_header_string, raw_headers[i .. i + cookie_header_string.len])) {
+                start_cookie = i + cookie_header_string.len;
+                exist_cookie = true;
+                break;
+            }
+        }
+        if (!exist_cookie) {
+            return "";
+        }
+
+        var end_cookie: usize = 0;
+        const crlf = "\r\n";
+        for (raw_headers[start_cookie..raw_headers.len]) |_, i| {
+            const point = i + start_cookie;
+            if (std.mem.eql(u8, crlf, raw_headers[point .. point + 2])) {
+                end_cookie = point;
+                break;
+            }
+        }
+
+        return raw_headers[start_cookie..end_cookie];
+    }
+
     pub fn rawBody(self: Response) []u8 {
         return self.raw_body;
     }
