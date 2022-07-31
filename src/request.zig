@@ -8,7 +8,7 @@ const Allocator = std.mem.Allocator;
 
 pub const Request = struct {
     allocator: Allocator,
-    headers: ?[]const u8, // TODO: 複数保持
+    headers: std.ArrayList(u8),
     body: ?[]const u8,
 
     pub fn get(self: Request, target: []const u8) !Response {
@@ -26,9 +26,9 @@ pub const Request = struct {
         defer self.allocator.free(host_header);
         _ = try tcp_conn.write(host_header);
 
-        if ((self.headers != null) and (self.headers.?.len != 0)) {
-            _ = try tcp_conn.write(self.headers.?);
-            _ = try tcp_conn.write("\r\n");
+        if (self.headers.items.len != 0) {
+            _ = try tcp_conn.write(self.headers.items);
+            self.allocator.free(self.headers.items);
         }
         _ = try tcp_conn.write("\r\n");
 
@@ -79,17 +79,19 @@ pub const Request = struct {
         defer self.allocator.free(host_header);
         _ = try tcp_conn.write(host_header);
 
-        if ((self.headers != null) and (self.headers.?.len != 0)) {
-            _ = try tcp_conn.write(self.headers.?);
-            _ = try tcp_conn.write("\r\n");
+        if (self.headers.items.len != 0) {
+            _ = try tcp_conn.write(self.headers.items);
+            self.allocator.free(self.headers.items);
         }
         _ = try tcp_conn.write("\r\n");
 
         if (self.body != null) {
             _ = try tcp_conn.write(self.body.?);
+            _ = try tcp_conn.write("\r\n");
         }
 
         // TODO: この辺り要注意
+        // もっといい方法あるはず
         var buf = std.ArrayList(u8).init(self.allocator);
         while (true) {
             var response_buffer: [2048]u8 = undefined;
@@ -126,8 +128,16 @@ pub const Request = struct {
         return self;
     }
 
+    // NOTE: error返した方がいいとは思う
     pub fn setHeader(self: *Request, header: []const u8) *Request {
-        self.headers = header;
+        self.headers.appendSlice(header) catch |err| {
+            log.err("setHeader error: {s}", .{err});
+            return self;
+        };
+        self.headers.appendSlice("\r\n") catch |err| {
+            log.err("setHeader error: {s}", .{err});
+            return self;
+        };
         return self;
     }
 };
