@@ -77,6 +77,11 @@ pub const Host = struct {
                 }
             }
         }
+        if (path.len == 0) {
+            tmp_path.clearAndFree();
+            try tmp_path.appendSlice("/");
+            path = tmp_path.items;
+        }
 
         return Host{
             .allocator = allocator,
@@ -98,6 +103,7 @@ test "Host test" {
 
         try testing.expect(std.mem.eql(u8, "example.com", host.domain));
         try testing.expect(80 == host.port);
+        try testing.expect(std.mem.eql(u8, "/", host.path));
     }
 
     {

@@ -20,6 +20,7 @@ pub const HttpClient = struct {
         return Request{
             .allocator = self.allocator,
             .headers = null,
+            .body = null,
         };
     }
 };
@@ -49,22 +50,41 @@ test "usage" {
 // test "local server (memo api)" {
 //     const allocator = testing.allocator;
 
-//     const host = "localhost:8082";
-
 //     const client = HttpClient.init(allocator);
-//     const res = try client.req()
-//         .get(host);
-//     defer res.deinit();
 
-//     try testing.expect(std.mem.eql(u8, "HTTP/1.1 401 Unauthorized", res.statusLine()));
-//     try testing.expect(std.mem.eql(u8, "401", res.statusCode()));
-//     try testing.expect(std.mem.eql(u8, "Unauthorized", res.status()));
+//     {
+//         const host = "localhost:8082";
+//         const res = try client.req()
+//             .get(host);
+//         defer res.deinit();
 
-//     try testing.expect(res.raw().len > 0);
-//     try testing.expect(res.rawHeaders().len > 0);
-//     try testing.expect(res.rawBody().len > 0);
+//         try testing.expect(std.mem.eql(u8, "HTTP/1.1 401 Unauthorized", res.statusLine()));
+//         try testing.expect(std.mem.eql(u8, "401", res.statusCode()));
+//         try testing.expect(std.mem.eql(u8, "Unauthorized", res.status()));
 
-//     std.debug.print("\n", .{});
-//     std.debug.print("res.rawHeaders():\n{s}\n", .{res.rawHeaders()});
-//     std.debug.print("res.rawBody():\n{s}\n", .{res.rawBody()});
+//         try testing.expect(res.raw().len > 0);
+//         try testing.expect(res.rawHeaders().len > 0);
+//         try testing.expect(res.rawBody().len > 0);
+
+//         std.debug.print("\n", .{});
+//         std.debug.print("res.rawHeaders():\n{s}\n", .{res.rawHeaders()});
+//         std.debug.print("res.rawBody():\n{s}\n", .{res.rawBody()});
+//     }
+
+//     {
+//         const host = "localhost:8082/auth";
+//         const res = try client.req()
+//             .setHeader("Content-Type: application/x-www-form-urlencoded\r\nContent-Length: xxx") // FIXME: 複数対応
+//             .setBody("name=XXXXXXX&passwd=YYYYYYYY")
+//             .post(host);
+//         defer res.deinit();
+
+//         try testing.expect(std.mem.eql(u8, "HTTP/1.1 200 OK", res.statusLine()));
+//         try testing.expect(std.mem.eql(u8, "200", res.statusCode()));
+//         try testing.expect(std.mem.eql(u8, "OK", res.status()));
+
+//         try testing.expect(res.raw().len > 0);
+//         try testing.expect(res.rawHeaders().len > 0);
+//         try testing.expect(res.rawBody().len > 0);
+//     }
 // }
