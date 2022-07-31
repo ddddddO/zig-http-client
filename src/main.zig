@@ -51,6 +51,7 @@ test "usage" {
 //   $ cd ~/github.com/ddddddO/memo
 //   $ make localcloudpg
 //   $ make runapi
+//   $ NAME=xxxx PASSWORD=xxxx zig build test
 test "local server (memo api)" {
     const allocator = testing.allocator;
     const client = HttpClient.init(allocator);

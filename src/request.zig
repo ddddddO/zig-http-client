@@ -32,34 +32,7 @@ pub const Request = struct {
         }
         _ = try tcp_conn.write("\r\n");
 
-        // TODO: この辺り要注意
-        var buf = std.ArrayList(u8).init(self.allocator);
-        while (true) {
-            var response_buffer: [2048]u8 = undefined;
-            const len = tcp_conn.read(&response_buffer) catch 0;
-            if (len == 0) {
-                // log.debug("Response end.", .{});
-                break;
-            }
-            const response = response_buffer[0..len];
-            try buf.appendSlice(response);
-
-            const end_response_1 = std.mem.eql(u8, "\r\n", response_buffer[len - 2 .. len]);
-            if (end_response_1) {
-                // log.debug("Response end..", .{});
-                break;
-            }
-            const end_response_2 = std.mem.eql(u8, "\r\n ", response_buffer[len - 3 .. len]);
-            if (end_response_2) {
-                // log.debug("Response end...", .{});
-                break;
-            }
-            const end_response_3 = std.mem.eql(u8, "}\n", response_buffer[len - 2 .. len]);
-            if (end_response_3) {
-                // log.debug("Response end...", .{});
-                break;
-            }
-        }
+        var buf = try self.receive(tcp_conn);
 
         return Response.init(buf);
     }
@@ -90,6 +63,12 @@ pub const Request = struct {
             _ = try tcp_conn.write("\r\n");
         }
 
+        var buf = try self.receive(tcp_conn);
+
+        return Response.init(buf);
+    }
+
+    pub fn receive(self: Request, tcp_conn: anytype) !std.ArrayList(u8) {
         // TODO: この辺り要注意
         // もっといい方法あるはず
         var buf = std.ArrayList(u8).init(self.allocator);
@@ -119,8 +98,7 @@ pub const Request = struct {
                 break;
             }
         }
-
-        return Response.init(buf);
+        return buf;
     }
 
     pub fn setBody(self: *Request, body: []const u8) *Request {
