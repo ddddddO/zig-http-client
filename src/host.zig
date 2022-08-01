@@ -35,7 +35,8 @@ pub const Host = struct {
                 scheme = tmp_scheme.items;
 
                 start_domain = i + 3;
-
+                try tmp_domain.appendSlice(target[start_domain..]);
+                domain = tmp_domain.items;
                 break;
             }
         }
@@ -190,6 +191,16 @@ test "Host test" {
         try testing.expect(std.mem.eql(u8, "example.com", host.domain));
         try testing.expect(443 == host.port);
         try testing.expect(std.mem.eql(u8, "/accounts", host.path));
+    }
+
+    {
+        const in = "https://example.com";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "https", host.scheme));
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(443 == host.port);
     }
 
     {
