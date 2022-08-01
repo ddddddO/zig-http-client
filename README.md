@@ -1,6 +1,21 @@
 # **WIP** zig-http-client
 HTTP client lib for Zig. Inspired by **[go-resty](https://github.com/go-resty/resty)**!
 
+## Todo
+### HTTP method
+- [x] GET
+- [x] POST
+- [ ] DELETE
+- [ ] PUT
+- [ ] HEAD
+- [ ] PATCH
+- [ ] OPTIONS
+
+### etc
+- [ ] HTTPS support
+- [ ] query parameter set func
+- [ ] retry support
+
 ## Usage
 
 ### GET method
