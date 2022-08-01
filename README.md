@@ -48,7 +48,7 @@ pub fn main() anyerror!void {
     var content_length_header = try std.fmt.allocPrint(allocator, "Content-Length: {d}", .{body.len});
     defer allocator.free(content_length_header);
 
-    const host = "localhost:8082/auth";
+    const host = "http://localhost:8082/auth";
     const res = try client.req()
         .setHeader("Content-Type: application/x-www-form-urlencoded")
         .setHeader(content_length_header)
@@ -59,7 +59,7 @@ pub fn main() anyerror!void {
     var cookie_header = try std.fmt.allocPrint(allocator, "Cookie: {s}", .{res.cookie()});
     defer allocator.free(cookie_header);
 
-    const host_2 = "localhost:8082/memos?userId=1";
+    const host_2 = "http://localhost:8082/memos?userId=1";
     const res_2 = try client.req()
         .setHeader(cookie_header)
         .get(host_2);

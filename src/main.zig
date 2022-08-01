@@ -57,7 +57,7 @@ test "local server (memo api)" {
     const client = HttpClient.init(allocator);
 
     {
-        const host = "localhost:8082";
+        const host = "http://localhost:8082";
         const res = try client.req()
             .get(host);
         defer res.deinit();
@@ -79,7 +79,7 @@ test "local server (memo api)" {
         var content_length_header = try std.fmt.allocPrint(allocator, "Content-Length: {d}", .{body.len});
         defer allocator.free(content_length_header);
 
-        const host = "localhost:8082/auth";
+        const host = "http://localhost:8082/auth";
         const res = try client.req()
             .setHeader("Content-Type: application/x-www-form-urlencoded")
             .setHeader(content_length_header) // TODO: ライブラリ側で、bodyから長さを算出してセットする方が良さそう。
@@ -95,7 +95,7 @@ test "local server (memo api)" {
         try testing.expect(res.rawHeaders().len > 0);
         try testing.expect(res.rawBody().len > 0);
 
-        const host_2 = "localhost:8082/memos?userId=1";
+        const host_2 = "http://localhost:8082/memos?userId=1";
         var cookie_header = try std.fmt.allocPrint(allocator, "Cookie: {s}", .{res.cookie()});
         defer allocator.free(cookie_header);
         const res_2 = try client.req()
@@ -125,7 +125,7 @@ test "Post login -> Get memo list (for README)" {
     var content_length_header = try std.fmt.allocPrint(allocator, "Content-Length: {d}", .{body.len});
     defer allocator.free(content_length_header);
 
-    const host = "localhost:8082/auth";
+    const host = "http://localhost:8082/auth";
     const res = try client.req()
         .setHeader("Content-Type: application/x-www-form-urlencoded")
         .setHeader(content_length_header)
@@ -136,7 +136,7 @@ test "Post login -> Get memo list (for README)" {
     var cookie_header = try std.fmt.allocPrint(allocator, "Cookie: {s}", .{res.cookie()});
     defer allocator.free(cookie_header);
 
-    const host_2 = "localhost:8082/memos?userId=1";
+    const host_2 = "http://localhost:8082/memos?userId=1";
     const res_2 = try client.req()
         .setHeader(cookie_header)
         .get(host_2);
