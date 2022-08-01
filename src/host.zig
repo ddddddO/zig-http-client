@@ -11,37 +11,52 @@ pub const Host = struct {
     port: u16,
 
     pub fn deinit(self: Host) void {
+        self.allocator.free(self.scheme);
         self.allocator.free(self.domain);
         self.allocator.free(self.path);
     }
 
-    // NOTE: 一旦、以下のパターンだけ考える
-    // domain
-    // domain/path
-    // domain:port
-    // domain:port/path
     pub fn init(allocator: Allocator, target: []const u8) !Host {
         var scheme: []u8 = "";
         var domain: []u8 = "";
         var path: []u8 = "";
         var port: u16 = undefined;
 
-        // domain
+        var tmp_scheme = std.ArrayList(u8).init(allocator);
         var tmp_domain = std.ArrayList(u8).init(allocator);
-        try tmp_domain.appendSlice(target);
-        domain = tmp_domain.items;
+        const delimiter = "://";
+        var start_domain: usize = 0;
+        for (target) |_, i| {
+            if (target[i] != delimiter[0]) {
+                continue;
+            }
+            if (std.mem.eql(u8, delimiter, target[i .. i + 3])) {
+                try tmp_scheme.appendSlice(target[0..i]);
+                scheme = tmp_scheme.items;
+
+                start_domain = i + 3;
+
+                break;
+            }
+        }
+        if (scheme.len == 0) {
+            try tmp_domain.appendSlice(target);
+            domain = tmp_domain.items;
+        }
 
         // domain:port
         // domain:port/path
+        var tmp_path = std.ArrayList(u8).init(allocator);
         var tmp_port = std.ArrayList(u8).init(allocator);
         defer allocator.free(tmp_port.items);
 
-        var tmp_path = std.ArrayList(u8).init(allocator);
         var _port: []u8 = "";
-        for (target) |_, i| {
+        for (target[start_domain..]) |_, n| {
+            var i = start_domain + n;
+
             if (target[i] == ':') {
                 tmp_domain.clearAndFree();
-                try tmp_domain.appendSlice(target[0..i]);
+                try tmp_domain.appendSlice(target[start_domain..i]);
                 domain = tmp_domain.items;
 
                 try tmp_port.appendSlice(target[i + 1 ..]);
@@ -65,10 +80,12 @@ pub const Host = struct {
 
         // domain/path
         if (path.len == 0) {
-            for (target) |_, i| {
+            for (target[start_domain..]) |_, n| {
+                var i = start_domain + n;
+
                 if (target[i] == '/') {
                     tmp_domain.clearAndFree();
-                    try tmp_domain.appendSlice(target[0..i]);
+                    try tmp_domain.appendSlice(target[start_domain..i]);
                     domain = tmp_domain.items;
 
                     try tmp_path.appendSlice(target[i..]);
@@ -143,5 +160,27 @@ test "Host test" {
         try testing.expect(std.mem.eql(u8, "example.com", host.domain));
         try testing.expect(8082 == host.port);
         try testing.expect(std.mem.eql(u8, "/accounts?userId=1", host.path));
+    }
+
+    {
+        const in = "http://example.com:8082/accounts?userId=1";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "http", host.scheme));
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        try testing.expect(8082 == host.port);
+        try testing.expect(std.mem.eql(u8, "/accounts?userId=1", host.path));
+    }
+
+    {
+        const in = "https://example.com/accounts";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(std.mem.eql(u8, "https", host.scheme));
+        try testing.expect(std.mem.eql(u8, "example.com", host.domain));
+        // try testing.expect(443 == host.port); // TODO:
+        try testing.expect(std.mem.eql(u8, "/accounts", host.path));
     }
 }
