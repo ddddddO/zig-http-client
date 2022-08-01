@@ -73,8 +73,16 @@ pub const Host = struct {
             }
         }
         if (_port.len == 0) {
-            try tmp_port.appendSlice("80");
-            _port = tmp_port.items;
+            if (std.mem.eql(u8, "http", scheme)) {
+                try tmp_port.appendSlice("80");
+                _port = tmp_port.items;
+            } else if (std.mem.eql(u8, "https", scheme)) {
+                try tmp_port.appendSlice("443");
+                _port = tmp_port.items;
+            } else {
+                try tmp_port.appendSlice("80");
+                _port = tmp_port.items;
+            }
         }
         port = try std.fmt.parseUnsigned(u16, _port, 10);
 
@@ -180,7 +188,23 @@ test "Host test" {
 
         try testing.expect(std.mem.eql(u8, "https", host.scheme));
         try testing.expect(std.mem.eql(u8, "example.com", host.domain));
-        // try testing.expect(443 == host.port); // TODO:
+        try testing.expect(443 == host.port);
         try testing.expect(std.mem.eql(u8, "/accounts", host.path));
+    }
+
+    {
+        const in = "http://example.com/accounts";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(80 == host.port);
+    }
+
+    {
+        const in = "http://example.com:8080/accounts";
+        const host = try Host.init(allocator, in);
+        defer host.deinit();
+
+        try testing.expect(8080 == host.port);
     }
 }
