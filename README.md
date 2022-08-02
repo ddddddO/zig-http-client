@@ -37,7 +37,6 @@ pub fn main() anyerror!void {
     try writer.print("Status Line: {s}\n", .{res.statusLine()});
     try writer.print("Status Code: {s}\n", .{res.statusCode()});
     try writer.print("Status: {s}\n", .{res.status()});
-
     // Output:
     // Status Line: HTTP/1.1 200 OK
     // Status Code: 200
