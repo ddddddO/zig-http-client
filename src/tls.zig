@@ -16,41 +16,58 @@ const TLS = struct {
         };
     }
 
-    fn handshake(self: TLS) !std.ArrayList(u8) {
+    fn handshake(self: TLS) !void {
         std.debug.print("\nIN handshake\n", .{});
 
-        const client_hello = try TLSRecordLayer.init(self.allocator);
-        _ = try self.tcp_conn.write(client_hello.bytes);
+        const tls_record = TLSRecordLayer.init(self.allocator);
 
+        _ = try self.tcp_conn.write(try tls_record.clientHello());
+
+        const server_hello = try self.receive();
+        std.debug.print("Server Hello:\n{s}\n", .{server_hello});
+        std.debug.print("Server Hello Length: {d}\n", .{server_hello.len});
+
+        std.debug.print("\nEND handshake\n", .{});
+    }
+
+    fn receive(self: TLS) ![]u8 {
         var buf = std.ArrayList(u8).init(self.allocator);
         while (true) {
-            std.debug.print("\nIN while\n", .{});
-
+            // std.debug.print("\nIN while\n", .{});
             var response_buffer: [2048]u8 = undefined;
             const len = self.tcp_conn.read(&response_buffer) catch 0;
             if (len == 0) {
-                std.debug.print("Response end.", .{});
+                // std.debug.print("Response end.", .{});
                 break;
             }
-            std.debug.print("Received\n{s}", .{response_buffer});
 
+            // FIXME: ?長さが異なる
+            std.debug.print("Received:\n{s}", .{response_buffer});
+            std.debug.print("Received Length: {d}\n", .{response_buffer.len});
             const response = response_buffer[0..len];
+            std.debug.print("Response Length: {d}\n", .{response.len});
             try buf.appendSlice(response);
         }
-        return buf;
+        std.debug.print("Buf Length: {s}\n", .{buf.items});
+        return buf.items;
     }
 };
 
 const TLSRecordLayer = struct {
     allocator: Allocator,
-    bytes: []u8,
 
-    fn init(allocator: Allocator) !TLSRecordLayer {
+    fn init(allocator: Allocator) TLSRecordLayer {
+        return TLSRecordLayer{
+            .allocator = allocator,
+        };
+    }
+
+    fn clientHello(self: TLSRecordLayer) ![]u8 {
         // NOTE:
         // ref: https://realizeznsg.hatenablog.com/entry/2018/09/17/110000
         // 以下は、wiresharkを起動し、curl https://app-dot-tag-mng-243823.appspot.com を実行し、「Client Hello」のパケットを調べて少し手を加えた。
         // 実行するとwiresharkで「[Client Hello Fragment], Ignore Unkown Record」と確認できた。
-        var client_hello_buf = std.ArrayList(u8).init(allocator);
+        var client_hello_buf = std.ArrayList(u8).init(self.allocator);
 
         const content_type = [_]u8{'\x16'};
         const tls_v1_0 = [_]u8{ '\x03', '\x01' };
@@ -91,10 +108,7 @@ const TLSRecordLayer = struct {
         const extensions_length = [_]u8{ '\x00', '\x00' }; // 2
         try client_hello_buf.appendSlice(&extensions_length);
 
-        return TLSRecordLayer{
-            .allocator = allocator,
-            .bytes = client_hello_buf.items,
-        };
+        return client_hello_buf.items;
     }
 };
 
@@ -108,6 +122,5 @@ test "check ssl/tls" {
     defer tcp_conn.close();
 
     const tls = TLS.init(allocator, tcp_conn);
-    var buf = try tls.handshake();
-    try std.testing.expect(buf.items.len > 0);
+    try tls.handshake();
 }
