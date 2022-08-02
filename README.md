@@ -44,7 +44,7 @@ pub fn main() anyerror!void {
 }
 ```
 
-### POST and GET method (HTTP Request with cookie)
+### POST and GET method (with Cookie)
 ```zig
 const std = @import("std");
 const HttpClient = @import("http-client").HttpClient;
