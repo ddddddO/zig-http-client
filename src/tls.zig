@@ -53,6 +53,54 @@ const TLS = struct {
     }
 };
 
+const ContentType = enum {
+    handshake,
+
+    fn bytes(self: ContentType) [1]u8 {
+        return switch (self) {
+            ContentType.handshake => [1]u8{'\x16'},
+        };
+    }
+};
+
+const TLSVersion = enum {
+    v1_0,
+    v1_2,
+
+    fn bytes(self: TLSVersion) [2]u8 {
+        return switch (self) {
+            TLSVersion.v1_0 => [2]u8{ '\x03', '\x01' },
+            TLSVersion.v1_2 => [2]u8{ '\x03', '\x03' },
+        };
+    }
+};
+
+const HandshakeType = enum {
+    client_hello,
+
+    fn bytes(self: HandshakeType) [1]u8 {
+        return switch (self) {
+            HandshakeType.client_hello => [1]u8{'\x01'},
+        };
+    }
+};
+
+const CipherSuite = enum {
+    TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+    TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+    TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+    TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+
+    fn bytes(self: CipherSuite) [2]u8 {
+        return switch (self) {
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 => [2]u8{ '\xc0', '\x30' },
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 => [2]u8{ '\xc0', '\x2c' },
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 => [2]u8{ '\xc0', '\x28' },
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384 => [2]u8{ '\xc0', '\x24' },
+        };
+    }
+};
+
 const TLSRecordLayer = struct {
     allocator: Allocator,
 
@@ -69,34 +117,31 @@ const TLSRecordLayer = struct {
         // 実行するとwiresharkで「[Client Hello Fragment], Ignore Unkown Record」と確認できた。
         var client_hello_buf = std.ArrayList(u8).init(self.allocator);
 
-        const content_type = [_]u8{'\x16'};
-        const tls_v1_0 = [_]u8{ '\x03', '\x01' };
+        const content_type = ContentType.handshake.bytes();
+        const version = TLSVersion.v1_2.bytes();
         const content_length = [_]u8{ '\x00', '\x2a' }; // 42
         try client_hello_buf.appendSlice(&content_type);
-        try client_hello_buf.appendSlice(&tls_v1_0);
+        try client_hello_buf.appendSlice(&version);
         try client_hello_buf.appendSlice(&content_length);
 
-        const handshake_type = [_]u8{'\x01'};
-
+        const handshake_type = HandshakeType.client_hello.bytes();
         // sum 46 bytes?
         const length = [_]u8{ '\x00', '\x00', '\x2e' }; // 3
-        const tls_v1_2 = [_]u8{ '\x03', '\x03' }; // 2
         try client_hello_buf.appendSlice(&handshake_type);
         try client_hello_buf.appendSlice(&length);
-        try client_hello_buf.appendSlice(&tls_v1_2);
+        try client_hello_buf.appendSlice(&version);
 
         // random
         const unix_time = [_]u8{ '\x2f', '\xe5', '\xd6', '\xfe' }; // 4
-        const random_byte = [_]u8{ '\x45', '\xff', '\x25', '\x51', '\xff', '\x1d', '\xfa', '\xa8', '\x29', '\x39', '\x46', '\x3a', '\x1a', '\xb7', '\x23', '\x7d', '\x42', '\x85', '\x3f', '\xc5', '\xe8', '\x0a', '\x78', '\x57', '\x20', '\x02', '\xfc', '\x1f' }; // 28
+        const random_bytes = [_]u8{ '\x45', '\xff', '\x25', '\x51', '\xff', '\x1d', '\xfa', '\xa8', '\x29', '\x39', '\x46', '\x3a', '\x1a', '\xb7', '\x23', '\x7d', '\x42', '\x85', '\x3f', '\xc5', '\xe8', '\x0a', '\x78', '\x57', '\x20', '\x02', '\xfc', '\x1f' }; // 28
         try client_hello_buf.appendSlice(&unix_time);
-        try client_hello_buf.appendSlice(&random_byte);
+        try client_hello_buf.appendSlice(&random_bytes);
 
         const session_id_length = [_]u8{'\x00'}; // 1
         try client_hello_buf.appendSlice(&session_id_length);
 
         const cipher_suites_length = [_]u8{ '\x00', '\x02' }; // 2
-        const cipher_suite = [_]u8{ '\xc0', '\x30' }; // 2
-
+        const cipher_suite = CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384.bytes(); // 2
         try client_hello_buf.appendSlice(&cipher_suites_length);
         try client_hello_buf.appendSlice(&cipher_suite);
 
