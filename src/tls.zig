@@ -20,43 +20,79 @@ const TLS = struct {
         std.debug.print("\nIN handshake\n", .{});
 
         const tls_record = TLSRecordLayer.init(self.allocator);
-
         _ = try self.tcp_conn.write(try tls_record.clientHello());
 
-        const server_hello = try self.receive();
-        std.debug.print("Server Hello:\n{s}\n", .{server_hello});
+        const writer = std.io.getStdOut().writer();
+        const server_hello = try self.receiveServerHello();
+        try writer.print("{s}", .{server_hello.content_type});
+        try writer.print("{s}", .{server_hello.version_a});
+        try writer.print("{s}", .{server_hello.length_a});
+        try writer.print("{s}", .{server_hello.handshake_type});
+        try writer.print("{s}", .{server_hello.length_b});
+        try writer.print("{s}", .{server_hello.version_b});
+        try writer.print("{s}", .{server_hello.random});
+        try writer.print("{s}", .{server_hello.session_id_length});
+        try writer.print("{s}", .{server_hello.session_id});
+        try writer.print("{s}", .{server_hello.cipher_suite});
+        try writer.print("{s}", .{server_hello.compression_method});
+        try writer.print("{s}", .{server_hello.extensions_length});
+        try writer.print("{s}", .{server_hello.extension_ec_point_formats});
+        try writer.print("{s}", .{server_hello.extension_application_layer_protocol_negotiation});
 
         // NOTE:
         // zig test src/tls.zig > dump.bin
         // od -x dump.bin
         // wiresharkで見るのと↑で見るのとで逆の並びになっている。
-        const writer = std.io.getStdOut().writer();
-        try writer.print("{s}", .{server_hello});
-
-        std.debug.print("Server Hello Length: {d}\n", .{server_hello.len});
 
         std.debug.print("END handshake\n", .{});
     }
 
-    fn receive(self: TLS) ![]u8 {
-        var buf = std.ArrayList(u8).init(self.allocator);
-        while (true) {
-            // std.debug.print("\nIN while\n", .{});
-            var response_buffer: [2048]u8 = undefined;
-            const len = self.tcp_conn.read(&response_buffer) catch 0;
-            if (len == 0) {
-                // std.debug.print("Response end.", .{});
-                break;
-            }
+    fn receiveServerHello(self: TLS) !ServerHello {
+        var reader = self.tcp_conn.reader();
+        var server_hello = ServerHello.init();
+        _ = try reader.read(std.mem.asBytes(&server_hello));
+        return server_hello;
+    }
+};
 
-            // std.debug.print("Received:\n{s}", .{response_buffer});
-            // std.debug.print("Received Length: {d}\n", .{response_buffer.len});
-            const response = response_buffer[0..len];
-            // std.debug.print("Response Length: {d}\n", .{response.len});
-            try buf.appendSlice(response);
-        }
-        // std.debug.print("Buf Length: {s}\n", .{buf.items});
-        return buf.items;
+const ServerHello = struct {
+    content_type: [1]u8,
+    version_a: [2]u8,
+    length_a: [2]u8,
+
+    handshake_type: [1]u8,
+    length_b: [3]u8,
+    version_b: [2]u8,
+
+    random: [32]u8, // 4+28=32
+    session_id_length: [1]u8,
+    session_id: [32]u8,
+
+    cipher_suite: [2]u8,
+    compression_method: [1]u8,
+
+    // TODO: 可変長は可能？
+    extensions_length: [2]u8,
+    extension_ec_point_formats: [6]u8,
+    extension_application_layer_protocol_negotiation: [17]u8,
+
+    fn init() ServerHello {
+        return ServerHello{
+            .content_type = undefined,
+            .version_a = undefined,
+            .length_a = undefined,
+            .handshake_type = undefined,
+            .length_b = undefined,
+            .version_b = undefined,
+            .random = undefined,
+            .session_id_length = undefined,
+            .session_id = undefined,
+            .cipher_suite = undefined,
+            .compression_method = undefined,
+            .extensions_length = undefined,
+            .extension_ec_point_formats = undefined,
+            .extension_application_layer_protocol_negotiation = undefined,
+        };
     }
 };
 
