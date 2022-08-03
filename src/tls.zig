@@ -25,9 +25,17 @@ const TLS = struct {
 
         const server_hello = try self.receive();
         std.debug.print("Server Hello:\n{s}\n", .{server_hello});
+
+        // NOTE:
+        // zig test src/tls.zig > dump.bin
+        // od -x dump.bin
+        // wiresharkで見るのと↑で見るのとで逆の並びになっている。
+        const writer = std.io.getStdOut().writer();
+        try writer.print("{s}", .{server_hello});
+
         std.debug.print("Server Hello Length: {d}\n", .{server_hello.len});
 
-        std.debug.print("\nEND handshake\n", .{});
+        std.debug.print("END handshake\n", .{});
     }
 
     fn receive(self: TLS) ![]u8 {
@@ -41,14 +49,13 @@ const TLS = struct {
                 break;
             }
 
-            // FIXME: ?長さが異なる
-            std.debug.print("Received:\n{s}", .{response_buffer});
-            std.debug.print("Received Length: {d}\n", .{response_buffer.len});
+            // std.debug.print("Received:\n{s}", .{response_buffer});
+            // std.debug.print("Received Length: {d}\n", .{response_buffer.len});
             const response = response_buffer[0..len];
-            std.debug.print("Response Length: {d}\n", .{response.len});
+            // std.debug.print("Response Length: {d}\n", .{response.len});
             try buf.appendSlice(response);
         }
-        std.debug.print("Buf Length: {s}\n", .{buf.items});
+        // std.debug.print("Buf Length: {s}\n", .{buf.items});
         return buf.items;
     }
 };
