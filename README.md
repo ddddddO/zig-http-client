@@ -21,7 +21,7 @@ HTTP client lib for Zig. Inspired by **[go-resty](https://github.com/go-resty/re
 ### GET method
 ```zig
 const std = @import("std");
-const HttpClient = @import("http-client").HttpClient;
+const HttpClient = @import("zig-http-client").HttpClient;
 
 pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
@@ -47,7 +47,7 @@ pub fn main() anyerror!void {
 ### POST and GET method (with Cookie)
 ```zig
 const std = @import("std");
-const HttpClient = @import("http-client").HttpClient;
+const HttpClient = @import("zig-http-client").HttpClient;
 
 pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
