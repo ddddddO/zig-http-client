@@ -126,7 +126,7 @@ const TLSRecordLayer = struct {
         // 以下は、wiresharkを起動し、curl https://app-dot-tag-mng-243823.appspot.com を実行し、「Client Hello」のパケットを調べて少し手を加えた。
         // 実行するとwiresharkで「[Client Hello Fragment], Ignore Unkown Record」と確認できた。
         //   -> https://milestone-of-se.nesuke.com/nw-basic/tls/https-structure/
-        //   -> 変更後、[Client Hello] の表示を確認。[Client Hello]の後に、サーバーからACK -> [Continuation Data]が送られてきていた。
+        //   -> 変更後、[Client Hello] の表示を確認。[Client Hello]の後に、サーバーからACK -> [Server Hello]が送られてきていた。
 
         // wiresharkで、対象のパケットを選択して、「コピー」 -> 「as a Hex Stream」後、以下
         // echo a01b23456789 | sed -E ":l; s/^([0-9a-z]+)([a-z0-9]{2})/\1,\'\\\x\2\'/; t l;";
