@@ -43,6 +43,7 @@ const TLS = struct {
         // zig test src/tls.zig > dump.bin
         // od -x dump.bin
         // wiresharkで見るのと↑で見るのとで逆の並びになっている。
+        // また、2byte毎に並びが逆になるので、ServerHello structに詰めるときor詰めた後で何とかしないといけなさそう。
 
         std.debug.print("END handshake\n", .{});
     }
