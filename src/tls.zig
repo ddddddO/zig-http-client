@@ -27,17 +27,17 @@ const TLS = struct {
         try writer.print("{s}", .{server_hello.content_type});
         try writer.print("{s}", .{server_hello.version_a});
         try writer.print("{s}", .{server_hello.length_a});
-        try writer.print("{s}", .{server_hello.handshake_type});
-        try writer.print("{s}", .{server_hello.length_b});
-        try writer.print("{s}", .{server_hello.version_b});
-        try writer.print("{s}", .{server_hello.random});
-        try writer.print("{s}", .{server_hello.session_id_length});
-        try writer.print("{s}", .{server_hello.session_id});
-        try writer.print("{s}", .{server_hello.cipher_suite});
-        try writer.print("{s}", .{server_hello.compression_method});
-        try writer.print("{s}", .{server_hello.extensions_length});
-        try writer.print("{s}", .{server_hello.extension_ec_point_formats});
-        try writer.print("{s}", .{server_hello.extension_application_layer_protocol_negotiation});
+        // try writer.print("{s}", .{server_hello.handshake_type});
+        // try writer.print("{s}", .{server_hello.length_b});
+        // try writer.print("{s}", .{server_hello.version_b});
+        // try writer.print("{s}", .{server_hello.random});
+        // try writer.print("{s}", .{server_hello.session_id_length});
+        // try writer.print("{s}", .{server_hello.session_id});
+        // try writer.print("{s}", .{server_hello.cipher_suite});
+        // try writer.print("{s}", .{server_hello.compression_method});
+        // try writer.print("{s}", .{server_hello.extensions_length});
+        // try writer.print("{s}", .{server_hello.extension_ec_point_formats});
+        // try writer.print("{s}", .{server_hello.extension_application_layer_protocol_negotiation});
 
         // NOTE:
         // zig test src/tls.zig > dump.bin
@@ -50,8 +50,10 @@ const TLS = struct {
 
     fn receiveServerHello(self: TLS) !ServerHello {
         var reader = self.tcp_conn.reader();
+        // NOTE: BigでもLittleでも変わらない
+        var optimized_reader = std.io.bitReader(std.builtin.Endian.Big, reader);
         var server_hello = ServerHello.init();
-        _ = try reader.read(std.mem.asBytes(&server_hello));
+        _ = try optimized_reader.read(std.mem.asBytes(&server_hello));
         return server_hello;
     }
 };
