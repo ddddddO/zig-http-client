@@ -24,8 +24,8 @@ const TLS = struct {
 
         const writer = std.io.getStdOut().writer();
         const server_hello = try self.receiveServerHello();
-        try writer.print("{s}", .{server_hello.content_type});
-        try writer.print("{s}", .{server_hello.version_a});
+        // try writer.print("{s}", .{server_hello.content_type});
+        // try writer.print("{s}", .{server_hello.version_a});
         try writer.print("{s}", .{server_hello.length_a});
         // try writer.print("{s}", .{server_hello.handshake_type});
         // try writer.print("{s}", .{server_hello.length_b});
@@ -51,9 +51,32 @@ const TLS = struct {
     fn receiveServerHello(self: TLS) !ServerHello {
         var reader = self.tcp_conn.reader();
         // NOTE: BigでもLittleでも変わらない
-        var optimized_reader = std.io.bitReader(std.builtin.Endian.Big, reader);
+        // var optimized_reader = std.io.bitReader(std.builtin.Endian.Big, reader);
+        // var server_hello = ServerHello.init();
+        // _ = try optimized_reader.read(std.mem.asBytes(&server_hello));
+        var buf = std.ArrayList(u8).init(self.allocator);
+        _ = try reader.readAllArrayList(&buf, 10000);
         var server_hello = ServerHello.init();
-        _ = try optimized_reader.read(std.mem.asBytes(&server_hello));
+        for (buf.items) |_, i| {
+            if (i == 5) {
+                // NOTE: for debug
+                break;
+            }
+
+            if (i == 0) {
+                server_hello.content_type = [1]u8{buf.items[i]};
+            }
+            if (i == 1) {
+                server_hello.version_a = [2]u8{ buf.items[i + 1], buf.items[i] };
+            }
+            if (i == 3) {
+                server_hello.length_a = [2]u8{ buf.items[i + 1], buf.items[i] };
+            }
+            // NOTE: tlsのフィールドごとに↑と同様の操作をする...?
+
+            std.debug.print("Readed Server Hello: {}\n", .{buf.items[i]});
+        }
+
         return server_hello;
     }
 };
